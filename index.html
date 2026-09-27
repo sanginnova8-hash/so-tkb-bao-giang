@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      // Defensive guard for environments where window.fetch has only a getter without a setter.
+      // This prevents "Uncaught TypeError: Cannot set property fetch of #<Window> which has only a getter"
+      // when libraries, polyfills, or dev tooling attempt to assign or wrap window.fetch.
+      (function() {
+        try {
+          var originalFetch = window.fetch;
+          var activeFetch = originalFetch;
+          Object.defineProperty(window, 'fetch', {
+            get: function() {
+              return activeFetch;
+            },
+            set: function(fn) {
+              activeFetch = fn;
+            },
+            configurable: true,
+            enumerable: true
+          });
+        } catch (e) {
+          // If defineProperty is restricted, continue safely
+        }
+      })();
+    </script>
+    <title>Sổ Thời Khóa Biểu & Báo Giảng Tự Động</title>
+    <meta name="description" content="Hệ thống quản lý thời khóa biểu, phân phối chương trình và tự động lập lịch báo giảng theo tuần dành cho giáo viên." />
+    <meta property="og:title" content="Sổ Thời Khóa Biểu & Báo Giảng Tự Động" />
+    <meta property="og:description" content="Hệ thống quản lý thời khóa biểu, phân phối chương trình và tự động lập lịch báo giảng theo tuần dành cho giáo viên." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Times+New+Roman&display=swap" rel="stylesheet">
+  </head>
+  <body class="bg-slate-50 text-slate-900 antialiased font-sans selection:bg-indigo-500 selection:text-white">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

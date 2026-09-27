@@ -1,0 +1,8 @@
+{
+  "name": "Remix Remix Sổ Thời Khóa Biểu \u0026 Báo Giảng Tự Động",
+  "description": "Hệ thống quản lý thời khóa biểu, phân phối chương trình (PPCT) và tự động lập lịch báo giảng theo tuần dành cho giáo viên.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

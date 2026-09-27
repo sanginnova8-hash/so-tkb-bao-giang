@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "entities": {
+    "Account": {
+      "title": "Account",
+      "type": "object",
+      "description": "Tài khoản giáo viên hoặc quản trị viên bao gồm tên đăng nhập, mật khẩu mã hóa, thông tin cá nhân và vai trò.",
+      "properties": {
+        "id": { "type": "string" },
+        "username": { "type": "string" },
+        "passwordHash": { "type": "string" },
+        "teacherName": { "type": "string" },
+        "school": { "type": "string" },
+        "department": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "teacher"] },
+        "status": { "type": "string", "enum": ["active", "locked"] },
+        "createdAt": { "type": "string" },
+        "lastLoginAt": { "type": "string" },
+        "stats": { "type": "object" }
+      },
+      "required": ["username", "passwordHash", "teacherName", "role"]
+    },
+    "UserAppState": {
+      "title": "UserAppState",
+      "type": "object",
+      "description": "Toàn bộ dữ liệu của giáo viên bao gồm hồ sơ, cài đặt, thời khóa biểu, phân phối chương trình, báo giảng và quy tắc viết tắt.",
+      "properties": {
+        "profile": { "type": "object" },
+        "settings": { "type": "object" },
+        "timetable": { "type": "array" },
+        "curriculum": { "type": "array" },
+        "lessonLogs": { "type": "array" },
+        "aliases": { "type": "array" },
+        "lastUpdated": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["profile", "settings", "timetable", "curriculum", "lessonLogs"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "type": "object",
+      "description": "Hồ sơ cá nhân giáo viên và thông tin trường.",
+      "properties": {
+        "teacherName": { "type": "string" },
+        "school": { "type": "string" },
+        "department": { "type": "string" },
+        "email": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["teacherName", "school"]
+    }
+  },
+  "firestore": {
+    "/accounts/{username}": {
+      "schema": "Account",
+      "description": "Danh sách tài khoản giáo viên và quản trị viên."
+    },
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Thông tin tài khoản giáo viên."
+    },
+    "/users/{userId}/appState/{stateId}": {
+      "schema": "UserAppState",
+      "description": "Dữ liệu sổ thời khóa biểu và báo giảng của giáo viên."
+    }
+  }
+}
