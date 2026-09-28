@@ -222,7 +222,7 @@ export async function loginWithCredentials(
   if (account.status === 'locked') {
     return {
       success: false,
-      error: 'Tài khoản này hiện đang bị tạm khóa. Vui lòng liên hệ quản trị viên (sanginnova).',
+      error: 'Tài khoản này hiện đang bị tạm khóa. Vui lòng liên hệ Quản trị viên để được hỗ trợ mở khóa.',
     };
   }
 

@@ -80,7 +80,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <div className="flex items-center gap-2">
                 <h3 className="font-bold text-base">{currentUser?.teacherName || currentUser?.username || 'Giáo viên'}</h3>
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${isAdmin ? 'bg-amber-400 text-slate-950' : 'bg-white/20 text-white'}`}>
-                  {isAdmin ? 'Quản trị viên (sanginnova)' : 'Giáo viên'}
+                  {isAdmin ? 'Quản trị viên' : 'Giáo viên'}
                 </span>
               </div>
               <p className="text-xs text-sky-200 mt-0.5">

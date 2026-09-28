@@ -16,6 +16,7 @@ import {
 } from './types';
 import {
   getInitialStorageData,
+  getEmptyStorageData,
   loadAppState,
   saveAppState,
 } from './services/storageService';
@@ -29,6 +30,7 @@ import {
 } from './services/authService';
 import { ActiveTab, Navbar } from './components/Navbar';
 import { Dashboard } from './components/Dashboard';
+import { PublicLanding } from './components/PublicLanding';
 import { TimetableManager } from './components/TimetableManager';
 import { CurriculumManager } from './components/CurriculumManager';
 import { LessonLogManager } from './components/LessonLogManager';
@@ -64,7 +66,7 @@ export default function App() {
     if (candidate && candidate !== 'undefined' && candidate !== 'null') {
       return candidate;
     }
-    return DEFAULT_ADMIN_USERNAME;
+    return '';
   }, [viewingTeacher, currentUser]);
 
   // Active account metadata
@@ -73,7 +75,13 @@ export default function App() {
   }, [viewingTeacher, currentUser]);
 
   // 2. Data state loaded for active user
-  const [initialData] = useState<StorageData>(() => loadAppState(activeUsername, activeAccount));
+  const [initialData] = useState<StorageData>(() => {
+    const active = getCurrentUser();
+    if (active?.username) {
+      return loadAppState(active.username, active);
+    }
+    return getEmptyStorageData();
+  });
 
   const [profile, setProfile] = useState<TeacherProfile>(initialData.profile);
   const [settings, setSettings] = useState<AppSettings>(initialData.settings);
@@ -112,25 +120,17 @@ export default function App() {
     }, 3000);
   };
 
-  // 5. Initialize Admin account and auto-login if first time
+  // 5. Initialize Admin account in database (does NOT auto-login as admin)
   useEffect(() => {
-    ensureAdminInitialized().then((admin) => {
-      // If no active session stored in browser, log in as admin sanginnova
-      if (!currentUser) {
-        setCurrentUserState(admin);
-        setCurrentUser(admin);
-      }
+    ensureAdminInitialized().catch((err) => {
+      console.warn('Admin account initialization notice:', err);
     });
   }, []);
 
   // 6. Function to load data when user or active view changes
   const loadUserData = useCallback(async (username: string, accountMeta: UserAccount | null) => {
-    const validUsername =
-      username && username !== 'undefined' && username !== 'null'
-        ? username
-        : accountMeta?.username && accountMeta.username !== 'undefined' && accountMeta.username !== 'null'
-        ? accountMeta.username
-        : DEFAULT_ADMIN_USERNAME;
+    if (!username) return;
+    const validUsername = username;
 
     // A. Load from local storage immediately for zero-delay UI render
     const localData = loadAppState(validUsername, accountMeta);
@@ -189,6 +189,10 @@ export default function App() {
 
     const initCloudState = async () => {
       if (isFirstLoadDone.current) return;
+      if (!activeUsername) {
+        isFirstLoadDone.current = true;
+        return;
+      }
       try {
         const target = activeUsername;
         const cloudData = await loadUserDataFromFirestore(target);
@@ -243,7 +247,12 @@ export default function App() {
       lastUpdated: new Date().toISOString(),
     };
 
-    const targetUser = activeUsername || DEFAULT_ADMIN_USERNAME;
+    // Do not save when user is not logged in (guest browsing public landing page)
+    if (!currentUser && !viewingTeacher) {
+      return;
+    }
+
+    const targetUser = activeUsername;
     if (!targetUser || targetUser === 'undefined' || targetUser === 'null') return;
 
     // Save locally immediately for this specific user
@@ -316,11 +325,12 @@ export default function App() {
 
   // Sample data detection
   const isSampleDataActive = useMemo(() => {
-    return (
+    return Boolean(
+      currentUser &&
       profile.teacherName === 'Nguyễn Văn An' &&
       timetable.some((s) => s.id.startsWith('tkb-w1-'))
     );
-  }, [profile, timetable]);
+  }, [currentUser, profile, timetable]);
 
   // Load sample data
   const handleLoadSampleData = () => {
@@ -397,20 +407,37 @@ export default function App() {
   };
 
   // Auth Handlers
+  const handleTabChange = (tab: ActiveTab) => {
+    if (!currentUser && tab !== 'dashboard') {
+      setAuthModalTab('login');
+      setIsAuthModalOpen(true);
+      showToast('Chức năng này yêu cầu đăng nhập. Thầy/cô vui lòng đăng nhập hoặc tạo tài khoản mới.');
+      return;
+    }
+    setActiveTab(tab);
+  };
+
   const handleLoginSuccess = async (user: UserAccount) => {
     setCurrentUserState(user);
     setViewingTeacher(null);
+    setIsAuthModalOpen(false);
     await loadUserData(user.username, user);
-    showToast(`Đã chuyển sang không gian làm việc của: ${user.teacherName}`);
+    showToast(`Chào mừng ${user.teacherName}! Chúc thầy/cô một tuần dạy tốt.`);
   };
 
   const handleLogout = () => {
     logoutCurrentUser();
     setCurrentUserState(null);
     setViewingTeacher(null);
-    setIsAuthModalOpen(true);
-    setAuthModalTab('login');
-    showToast('Đã đăng xuất. Vui lòng đăng nhập để truy cập dữ liệu sổ.');
+    setActiveTab('dashboard');
+    const empty = getEmptyStorageData();
+    setProfile(empty.profile);
+    setSettings(empty.settings);
+    setTimetable(empty.timetable);
+    setCurriculum(empty.curriculum);
+    setLessonLogs(empty.lessonLogs);
+    setAliases(empty.aliases);
+    showToast('Đã đăng xuất an toàn. Bạn đang ở trang chủ giới thiệu.');
   };
 
   const handleSwitchToTeacher = async (targetAccount: UserAccount) => {
@@ -424,11 +451,11 @@ export default function App() {
     const adminUser = currentUser || (await ensureAdminInitialized());
     if (adminUser) {
       await loadUserData(adminUser.username || DEFAULT_ADMIN_USERNAME, adminUser);
-      showToast(`Đã quay lại sổ của Quản trị viên: ${adminUser.teacherName || 'sanginnova'}`);
+      showToast(`Đã quay lại sổ của Quản trị viên: ${adminUser.teacherName || 'Admin'}`);
     }
   };
 
-  const isAdmin = currentUser?.role === 'admin' || currentUser?.username === 'sanginnova';
+  const isAdmin = currentUser?.role === 'admin' || currentUser?.username === DEFAULT_ADMIN_USERNAME;
 
   const handleOpenCloudModal = () => {
     if (!isAdmin) {
@@ -464,7 +491,7 @@ export default function App() {
             className="flex items-center gap-1 px-3 py-1 bg-slate-950 text-white rounded-lg hover:bg-slate-800 transition cursor-pointer font-bold text-xs"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Quay lại sổ Admin (sanginnova)</span>
+            <span>Quay lại sổ Quản trị viên</span>
           </button>
         </div>
       )}
@@ -472,7 +499,7 @@ export default function App() {
       {/* Navigation Header */}
       <Navbar
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={handleTabChange}
         settings={settings}
         setSettings={setSettings}
         profile={profile}
@@ -493,94 +520,105 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {activeTab === 'dashboard' && (
-          <Dashboard
-            settings={settings}
-            profile={profile}
-            timetable={timetable}
-            curriculum={curriculum}
-            lessonLogs={lessonLogs}
-            setActiveTab={setActiveTab}
-            onOpenPrintModal={() => setIsPrintModalOpen(true)}
-            onGenerateLog={handleGenerateLog}
-            onUpdateLogStatus={handleUpdateLogStatus}
-            isSampleDataActive={isSampleDataActive}
-            onClearSampleData={handleClearSampleData}
-          />
-        )}
-
-        {activeTab === 'timetable' && (
-          <TimetableManager
-            settings={settings}
-            setSettings={setSettings}
-            timetable={timetable}
-            setTimetable={setTimetable}
-            curriculum={curriculum}
-            aliases={aliases}
-            lessonLogs={lessonLogs}
-            setLessonLogs={setLessonLogs}
-            setProfile={setProfile}
-          />
-        )}
-
-        {activeTab === 'curriculum' && (
-          <CurriculumManager
-            curriculum={curriculum}
-            setCurriculum={setCurriculum}
-            aliases={aliases}
-            setAliases={setAliases}
-          />
-        )}
-
-        {activeTab === 'lessonLog' && (
-          <LessonLogManager
-            settings={settings}
-            setSettings={setSettings}
-            profile={profile}
-            setProfile={setProfile}
-            timetable={timetable}
-            setTimetable={setTimetable}
-            curriculum={curriculum}
-            aliases={aliases}
-            lessonLogs={lessonLogs}
-            setLessonLogs={setLessonLogs}
-            onOpenPrintModal={() => setIsPrintModalOpen(true)}
-          />
-        )}
-
-        {activeTab === 'data' && (
-          <DataImportExport
-            storageData={{
-              profile,
-              settings,
-              timetable,
-              curriculum,
-              lessonLogs,
-              aliases,
-              lastUpdated,
+        {!currentUser ? (
+          <PublicLanding
+            onOpenAuthModal={(tab = 'login') => {
+              setAuthModalTab(tab);
+              setIsAuthModalOpen(true);
             }}
-            setProfile={setProfile}
-            setSettings={setSettings}
-            setTimetable={setTimetable}
-            setCurriculum={setCurriculum}
-            setLessonLogs={setLessonLogs}
-            setAliases={setAliases}
-            onLoadSampleData={handleLoadSampleData}
-            onClearSampleData={handleClearSampleData}
           />
-        )}
+        ) : (
+          <>
+            {activeTab === 'dashboard' && (
+              <Dashboard
+                settings={settings}
+                profile={profile}
+                timetable={timetable}
+                curriculum={curriculum}
+                lessonLogs={lessonLogs}
+                setActiveTab={handleTabChange}
+                onOpenPrintModal={() => setIsPrintModalOpen(true)}
+                onGenerateLog={handleGenerateLog}
+                onUpdateLogStatus={handleUpdateLogStatus}
+                isSampleDataActive={isSampleDataActive}
+                onClearSampleData={handleClearSampleData}
+              />
+            )}
 
-        {activeTab === 'settings' && (
-          <SettingsModal
-            profile={profile}
-            setProfile={setProfile}
-            settings={settings}
-            setSettings={setSettings}
-            onResetAll={handleResetAll}
-            currentUser={currentUser}
-            onOpenChangePasswordModal={() => setIsChangePasswordModalOpen(true)}
-            onOpenAdminModal={() => setIsAdminModalOpen(true)}
-          />
+            {activeTab === 'timetable' && (
+              <TimetableManager
+                settings={settings}
+                setSettings={setSettings}
+                timetable={timetable}
+                setTimetable={setTimetable}
+                curriculum={curriculum}
+                aliases={aliases}
+                lessonLogs={lessonLogs}
+                setLessonLogs={setLessonLogs}
+                setProfile={setProfile}
+              />
+            )}
+
+            {activeTab === 'curriculum' && (
+              <CurriculumManager
+                curriculum={curriculum}
+                setCurriculum={setCurriculum}
+                aliases={aliases}
+                setAliases={setAliases}
+              />
+            )}
+
+            {activeTab === 'lessonLog' && (
+              <LessonLogManager
+                settings={settings}
+                setSettings={setSettings}
+                profile={profile}
+                setProfile={setProfile}
+                timetable={timetable}
+                setTimetable={setTimetable}
+                curriculum={curriculum}
+                aliases={aliases}
+                lessonLogs={lessonLogs}
+                setLessonLogs={setLessonLogs}
+                onOpenPrintModal={() => setIsPrintModalOpen(true)}
+              />
+            )}
+
+            {activeTab === 'data' && (
+              <DataImportExport
+                storageData={{
+                  profile,
+                  settings,
+                  timetable,
+                  curriculum,
+                  lessonLogs,
+                  aliases,
+                  lastUpdated,
+                }}
+                setProfile={setProfile}
+                setSettings={setSettings}
+                setTimetable={setTimetable}
+                setCurriculum={setCurriculum}
+                setLessonLogs={setLessonLogs}
+                setAliases={setAliases}
+                onLoadSampleData={handleLoadSampleData}
+                onClearSampleData={handleClearSampleData}
+              />
+            )}
+
+            {activeTab === 'settings' && (
+              <SettingsModal
+                profile={profile}
+                setProfile={setProfile}
+                settings={settings}
+                setSettings={setSettings}
+                onResetAll={handleResetAll}
+                currentUser={currentUser}
+                onOpenChangePasswordModal={() => setIsChangePasswordModalOpen(true)}
+                onOpenAdminModal={() => setIsAdminModalOpen(true)}
+              />
+            )}
+          </>
         )}
       </main>
 

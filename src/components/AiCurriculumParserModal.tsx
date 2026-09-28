@@ -716,6 +716,14 @@ export const AiCurriculumParserModal: React.FC<AiCurriculumParserModalProps> = (
                 </div>
               )}
 
+              {/* Strict Preservation Notice */}
+              <div className="p-2.5 bg-amber-50/90 border border-amber-200 rounded-xl text-amber-950 flex items-start gap-2 text-xs">
+                <CheckCircle2 className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold text-amber-900">Bảo lưu nguyên vẹn tên bài dạy gốc:</span> Hệ thống cam kết giữ nguyên 100% tên bài học trong phân phối chương trình gốc của bạn (không thêm bớt từ ngữ, không tự ý gán hậu tố Tiết 1, Tiết 2).
+                </div>
+              </div>
+
               {/* Input mode switcher + Paste action */}
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-2">
                 <div className="flex items-center gap-2">

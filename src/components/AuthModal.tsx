@@ -11,12 +11,9 @@ import {
   ShieldCheck,
   CheckCircle2,
   AlertCircle,
-  Sparkles,
   KeyRound,
 } from 'lucide-react';
 import {
-  DEFAULT_ADMIN_PASSWORD_PLAIN,
-  DEFAULT_ADMIN_USERNAME,
   loginWithCredentials,
   registerNewTeacher,
 } from '../services/authService';
@@ -121,12 +118,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
-  const fillAdminCredentials = () => {
-    setLoginUsername(DEFAULT_ADMIN_USERNAME);
-    setLoginPassword(DEFAULT_ADMIN_PASSWORD_PLAIN);
-    setErrorMsg(null);
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm overflow-y-auto">
       <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-8">
@@ -223,7 +214,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     required
                     value={loginUsername}
                     onChange={(e) => setLoginUsername(e.target.value)}
-                    placeholder="ví dụ: sanginnova hoặc tên của thầy/cô"
+                    placeholder="Nhập tên đăng nhập của thầy/cô"
                     className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
                   />
                 </div>
@@ -253,24 +244,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
-              </div>
-
-              {/* Quick Admin fill button */}
-              <div className="p-3 bg-amber-50/80 border border-amber-200/80 rounded-xl flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
-                  <div>
-                    <span className="font-semibold text-amber-900">Quản trị viên (Admin):</span>
-                    <span className="text-[11px] text-amber-800 block">Tên: sanginnova</span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={fillAdminCredentials}
-                  className="px-2.5 py-1 text-[11px] font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition shadow-2xs cursor-pointer"
-                >
-                  Điền nhanh Admin
-                </button>
               </div>
 
               <button

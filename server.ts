@@ -357,27 +357,35 @@ app.post('/api/parse-ppct', async (req, res) => {
     const systemPrompt = `Bạn là trợ lý chuyên gia về giáo dục và phân phối chương trình (PPCT) phổ thông / cao đẳng Việt Nam.
 Nhiệm vụ của bạn là đọc kỹ tài liệu Phân phối chương trình được cung cấp (từ file Word, Excel, PDF, ảnh chụp hoặc văn bản) và trích xuất thành danh sách bài học có cấu trúc chuẩn xác theo từng môn và từng khối lớp.
 
-Các quy tắc xử lý quan trọng:
-1. Xác định Môn học (Subject) cho từng bài học:
+QUY TẮC BẮT BUỘC - TUYỆT ĐỐI TUÂN THỦ:
+1. TUYỆT ĐỐI GIỮ NGUYÊN 100% TÊN BÀI HỌC GỐC (lessonTitle):
+   - TUYỆT ĐỐI KHÔNG ĐƯỢC THAY ĐỔI TÊN BÀI TRONG PHÂN PHỐI CHƯƠNG TRÌNH GỐC.
+   - Giữ nguyên từng từ, từng chữ, dấu câu, chữ số La Mã, ký tự đặc biệt y hệt văn bản gốc.
+   - KHÔNG ĐƯỢC tự ý thêm bất kỳ hậu tố nào như "(Tiết 1)", "(Tiết 2)", "(T1)", "(T2)", "(tiếp theo)", "(tt)" vào tên bài dạy.
+   - Nếu trong tài liệu gốc một bài học gồm nhiều tiết (ví dụ: cột số tiết là 2 hoặc ghi "Tiết 1-2: Bài 1: Mệnh đề"):
+     Khi tách thành từng tiết riêng biệt:
+     + Tiết 1: lessonTitle = "Bài 1: Mệnh đề"
+     + Tiết 2: lessonTitle = "Bài 1: Mệnh đề"
+     CẢ HAI TIẾT ĐỀU PHẢI GIỮ NGUYÊN CHÍNH XÁC TÊN BÀI GỐC, KHÔNG ĐƯỢC THÊM "(Tiết 1)" HAY "(Tiết 2)".
+   - KHÔNG tóm tắt, KHÔNG diễn giải, KHÔNG viết tắt nếu bản gốc không viết tắt.
+
+2. Xác định Môn học (Subject) cho từng bài học:
    - Các môn chuẩn: "Toán", "HĐTN-HN" (viết tắt của Hoạt động trải nghiệm, hướng nghiệp / HĐTNHN / HDTNHN), "Ngữ văn", "Tiếng Anh", "Vật lí", "Hóa học", "Sinh học", "Lịch sử", "Địa lí", "Tin học", "GDCD", "Công nghệ"...
    - ĐẶC BIỆT LƯU Ý: Nếu tài liệu ghi "HĐTNHN", "HDTNHN", "HĐTN - HN", "HĐTN, HN", "Hoạt động trải nghiệm hướng nghiệp" thì luôn chuẩn hóa tên môn thành "HĐTN-HN".
    - Môn yêu cầu ưu tiên: "${activeSubject}". Nếu tài liệu không ghi rõ môn khác, gán môn này.
 
-2. Xác định Khối lớp (Grade) cho từng bài học:
+3. Xác định Khối lớp (Grade) cho từng bài học:
    - Một tài liệu PPCT có thể chứa bài dạy của MỘT HOẶC NHIỀU KHỐI LỚP (Ví dụ: "Toán 10 và Toán 12", "Toán 10-12" gồm Khối 10, Khối 11, Khối 12, hoặc "HĐTNHN 10, 11, 12").
    - Hãy nhận diện chính xác từng phần / bảng / phân mục trong tài liệu thuộc khối lớp nào: Khối 10, Khối 11, Khối 12 (hoặc 6, 7, 8, 9).
    - Khối lớp ưu tiên xử lý: ${activeGradesStr}.
    - Trích xuất toàn bộ tất cả các bài của từng khối và gán đúng thuộc tính "grade" cho từng bài (ví dụ: bài lớp 10 thì grade=10, bài lớp 12 thì grade=12).
 
-3. Cấu trúc từng bài học:
+4. Cấu trúc từng bài học:
    - Tiết PPCT (periodNumber): Số nguyên liên tục tăng dần (1, 2, 3, 4...) tính riêng cho từng môn và khối lớp.
-   - Nếu trong tài liệu có cột tiết từ-đến (ví dụ: Tiết 1-2: Bài 1), hãy tách thành từng tiết riêng:
-     Tiết 1: "Bài 1... (Tiết 1)"
-     Tiết 2: "Bài 1... (Tiết 2)"
-   - Tên bài dạy (lessonTitle): Giữ nguyên trọn vẹn tên bài học, tên chủ đề hoặc nội dung kiểm tra/ôn tập.
+   - Tên bài dạy (lessonTitle): Đúng 100% nguyên văn tên bài học gốc trong tài liệu.
    - Học kỳ (semester): "Học kỳ I" hoặc "Học kỳ II".
    - Phân loại (category): Đại số, Hình học, Giải tích, Đọc hiểu, Hoạt động chủ đề, Ôn tập, Kiểm tra, Chuyên đề...
-   - Ghi chú (note): Ghi chú thêm nếu có.`;
+   - Ghi chú (note): Ghi chú thêm nếu có trong tài liệu.`;
 
     const contents: any[] = [];
     let extractedTextFromDoc = '';
@@ -578,14 +586,18 @@ Các quy tắc xử lý quan trọng:
     const mainSubject = normalizeSubject(parsedJson.subject);
     const mainGrade = parsedJson.grade || (Array.isArray(targetGrades) && targetGrades[0]) || defaultGrade || 10;
 
-    const normalizedEntries = (parsedJson.entries || []).map((e: any) => ({
-      ...e,
-      subject: normalizeSubject(e.subject || mainSubject),
-      grade: e.grade ? Number(e.grade) : mainGrade,
-      semester: e.semester || parsedJson.semester || 'Học kỳ I',
-      category: e.category || '',
-      note: e.note || '',
-    }));
+    const normalizedEntries = (parsedJson.entries || []).map((e: any) => {
+      const rawTitle = typeof e.lessonTitle === 'string' ? e.lessonTitle.trim() : '';
+      return {
+        ...e,
+        lessonTitle: rawTitle,
+        subject: normalizeSubject(e.subject || mainSubject),
+        grade: e.grade ? Number(e.grade) : mainGrade,
+        semester: e.semester || parsedJson.semester || 'Học kỳ I',
+        category: e.category || '',
+        note: e.note || '',
+      };
+    });
 
     // Recompute detected subjects and grades
     const foundSubjects = Array.from(new Set(normalizedEntries.map((e: any) => e.subject)));
